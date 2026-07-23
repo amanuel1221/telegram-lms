@@ -5,76 +5,48 @@ function App() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    try {
-      const launchParams = retrieveLaunchParams();
+    const launchParams = retrieveLaunchParams();
 
-      console.log("Launch Params:", launchParams);
+    console.log("ALL LAUNCH PARAMS:", launchParams);
 
-     setData({
-  user: launchParams.initData?.user,
-  platform: launchParams.platform,
-  version: launchParams.version,
-  theme: launchParams.themeParams,
-  authenticated: !!launchParams.initDataRaw,
-});
-    } catch (err) {
-      console.error(err);
-    }
+    console.log(
+      "INIT DATA RAW:",
+      launchParams.initDataRaw
+    );
+
+    console.log(
+      "INIT DATA:",
+      launchParams.initData
+    );
+
+    setData({
+      user: launchParams.initData?.user,
+      platform: launchParams.platform,
+      version: launchParams.version,
+      authenticated: Boolean(launchParams.initDataRaw),
+    });
   }, []);
 
-  if (!data) {
-    return <h2>Loading...</h2>;
-  }
+  if (!data) return <h2>Loading...</h2>;
 
   return (
-    <div
-      style={{
-        padding: "30px",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <h1 >Telegram LMS</h1>
-
-      <h2>👋 Welcome</h2>
+    <div>
+      <h1>Telegram LMS</h1>
 
       <p>
-        <strong>Name:</strong>{" "}
-        {data.user?.firstName || "Unknown"}
+        User:
+        {data.user?.firstName}
       </p>
 
       <p>
-        <strong>Username:</strong>{" "}
-        {data.user?.username || "No username"}
-      </p>
-
-      <p>
-        <strong>Telegram ID:</strong>{" "}
+        ID:
         {data.user?.id}
       </p>
 
       <p>
-        <strong>Language:</strong>{" "}
-        {data.user?.languageCode}
+        Auth:
+        {data.authenticated ? "YES" : "NO"}
       </p>
-
-      <p>
-        <strong>Platform:</strong>{" "}
-        {data.platform}
-      </p>
-
-      <p>
-        <strong>Version:</strong>{" "}
-        {data.version}
-      </p>
-
-      <hr />
-
-      <h3>Raw Init Data</h3>
-
-      <p>
-  <strong>Authenticated:</strong>{" "}
-  {data.initDataRaw ? "✅ Yes" : "❌ No"}
-</p>
     </div>
   );
 }
