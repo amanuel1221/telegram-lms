@@ -1,318 +1,129 @@
+import React, { useEffect, useState } from "react";
 import { useTelegram } from "./hooks/useTelegram";
+import { authenticateTelegram } from "./services/api";
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import Admin from "./pages/Admin";
 
-
-function App() {
-
+export default function App() {
   const telegram = useTelegram();
+  const [dbUser, setDbUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("home");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  useEffect(() => {
+    if (!telegram) return;
 
-  if (!telegram) {
+    const performAuth = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
+        const { initDataRaw, user: tgUser } = telegram;
+
+        if (initDataRaw) {
+          const res = await authenticateTelegram(initDataRaw);
+          if (res.data?.token) {
+            localStorage.setItem("lms_token", res.data.token);
+          }
+          setDbUser(res.data?.user || res.data);
+        } else {
+          // Fallback mock mode for web development
+          const mockUser = {
+            telegramId: tgUser?.id || "999888777",
+            firstName: tgUser?.firstName || "Dev",
+            lastName: tgUser?.lastName || "User",
+            role: "teacher",
+          };
+          const res = await authenticateTelegram(null, mockUser);
+          if (res.data?.token) {
+            localStorage.setItem("lms_token", res.data.token);
+          }
+          setDbUser(res.data?.user || res.data);
+        }
+      } catch (err) {
+        console.error("Auth error:", err);
+        setError(err.response?.data?.message || "Failed to authenticate with LMS server.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    performAuth();
+  }, [telegram]);
+
+  const handleDevRoleSwitch = async () => {
+    if (!dbUser) return;
+    const nextRole = dbUser.role === "teacher" ? "student" : "teacher";
+    const mockUser = {
+      telegramId: telegram?.user?.id || "999888777",
+      firstName: telegram?.user?.firstName || "Dev",
+      lastName: telegram?.user?.lastName || "User",
+      role: nextRole,
+    };
+
+    try {
+      setLoading(true);
+      const res = await authenticateTelegram(null, mockUser);
+      setDbUser(res.data?.user || res.data);
+      setActiveTab("home");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!telegram || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
-
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
         <div className="text-center">
-
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-
-          <p className="text-gray-300">
-            Loading Telegram data...
-          </p>
-
+          <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-slate-400 text-xs font-medium">Connecting to LMS...</p>
         </div>
-
       </div>
     );
-
   }
 
-
-  const {
-    user,
-    initDataRaw,
-    platform,
-    version
-  } = telegram;
-
-
-
-  return (
-
-    <main className="
-      min-h-screen 
-      bg-gradient-to-br 
-      from-slate-950 
-      via-slate-900 
-      to-black 
-      text-white 
-      flex 
-      items-center 
-      justify-center 
-      p-6
-    ">
-
-
-      <section className="
-        w-full 
-        max-w-md 
-        bg-white/10 
-        backdrop-blur-lg 
-        border 
-        border-white/20 
-        rounded-2xl 
-        p-8 
-        shadow-2xl
-      ">
-
-
-        {/* Header */}
-
-        <div className="text-center mb-8">
-
-
-          <div className="
-            w-20 
-            h-20 
-            mx-auto 
-            rounded-full 
-            bg-blue-600 
-            flex 
-            items-center 
-            justify-center 
-            text-3xl 
-            font-bold 
-            shadow-lg 
-            mb-4
-          ">
-
-            {
-              user?.firstName?.charAt(0) || "T"
-            }
-
-          </div>
-
-
-
-          <h1 className="text-3xl font-bold">
-            Telegram LMS
-          </h1>
-
-
-          <p className="text-gray-400 mt-2">
-            Welcome to your learning platform
-          </p>
-
-
-        </div>
-
-
-
-
-
-        {/* User Information */}
-
-        <div className="space-y-4">
-
-
-          <InfoCard
-            label="Name"
-            value={
-              user?.firstName || "Unknown"
-            }
-          />
-
-
-
-          <InfoCard
-            label="Username"
-            value={
-              user?.username
-              ? `@${user.username}`
-              : "No username"
-            }
-          />
-
-
-
-          <InfoCard
-            label="Telegram ID"
-            value={user?.id}
-          />
-
-
-
-          <InfoCard
-            label="Language"
-            value={user?.languageCode}
-          />
-
-
-
-          <InfoCard
-            label="Platform"
-            value={platform}
-          />
-
-
-
-          <InfoCard
-            label="Telegram Version"
-            value={version}
-          />
-
-
-        </div>
-
-
-
-
-
-        {/* Authentication Status */}
-
-        <div className="mt-8">
-
-
-          <div
-            className={`
-              flex 
-              items-center 
-              justify-between 
-              rounded-xl 
-              px-4 
-              py-3
-
-              ${
-                initDataRaw
-                ?
-                "bg-green-500/20 border border-green-500/40"
-                :
-                "bg-red-500/20 border border-red-500/40"
-              }
-
-            `}
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6 text-white">
+        <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-6 max-w-xs text-center space-y-3">
+          <p className="text-xs font-bold text-rose-400">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold"
           >
-
-
-            <span className="font-medium">
-              Authentication
-            </span>
-
-
-            <span>
-
-              {
-                initDataRaw
-                ?
-                "✅ Verified"
-                :
-                "❌ Failed"
-              }
-
-            </span>
-
-
-          </div>
-
-
+            Retry
+          </button>
         </div>
-
-
-
-
-
-        {/* DEBUG ONLY - REMOVE LATER */}
-
-        <div className="mt-8">
-
-
-          <h3 className="font-bold mb-2">
-            Init Data Raw
-          </h3>
-
-
-          <div className="
-            bg-black/40
-            rounded-xl
-            p-4
-            text-xs
-            text-gray-300
-            break-all
-            max-h-40
-            overflow-auto
-          ">
-
-            {
-              initDataRaw
-              ||
-              "No init data received"
-            }
-
-
-          </div>
-
-
-        </div>
-
-
-
-      </section>
-
-
-
-    </main>
-
-  );
-
-}
-
-
-
-
-
-function InfoCard({
-  label,
-  value
-}) {
-
+      </div>
+    );
+  }
 
   return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 pb-12 selection:bg-blue-500/30">
+      <Navbar
+        user={dbUser}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onDevRoleSwitch={!telegram.initDataRaw ? handleDevRoleSwitch : null}
+      />
 
-    <div className="
-      bg-white/5 
-      rounded-xl 
-      p-4 
-      border 
-      border-white/10
-    ">
-
-
-      <p className="text-sm text-gray-400">
-
-        {label}
-
-      </p>
-
-
-
-      <p className="
-        text-lg 
-        font-semibold 
-        break-all
-      ">
-
-        {
-          value || "-"
-        }
-
-      </p>
-
-
+      <main className="max-w-md mx-auto px-4 pt-5">
+        {activeTab === "home" ? (
+          <Home user={dbUser} refreshTrigger={refreshTrigger} />
+        ) : (
+          <Admin
+            onUploadSuccess={() => {
+              setRefreshTrigger((prev) => prev + 1);
+              setActiveTab("home");
+            }}
+          />
+        )}
+      </main>
     </div>
-
   );
-
 }
-
-
-
-export default App;
